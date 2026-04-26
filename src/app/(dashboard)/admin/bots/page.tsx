@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { Bot, Save, Users, Target, Activity, ToggleLeft, ToggleRight, Gamepad2, Loader2 } from "lucide-react";
 
 type PerGameBot = {
-  gameId: string;
+  id: string; // Database CUID
+  gameId: string; // Slug
   gameName: string;
   gameIcon: string;
   botsEnabled: boolean;
@@ -20,6 +21,7 @@ export default function ManageBotsPage() {
   const { user, token } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [updatingGameId, setUpdatingGameId] = useState<string | null>(null);
   const [perGameConfigs, setPerGameConfigs] = useState<PerGameBot[]>([]);
   const [config, setConfig] = useState({
     botsEnabled: true,
@@ -56,6 +58,7 @@ export default function ManageBotsPage() {
         const data = await gamesRes.json();
         setPerGameConfigs(
           (data.configs || []).map((c: any) => ({
+            id: c.id,
             gameId: c.gameId,
             gameName: c.gameName,
             gameIcon: c.gameIcon,
@@ -92,6 +95,28 @@ export default function ManageBotsPage() {
       toast.error("Failed to save bot configuration");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleToggleGameBots = async (game: PerGameBot) => {
+    setUpdatingGameId(game.id);
+    try {
+      const res = await fetch(`/api/admin/game-config/${game.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ botsEnabled: !game.botsEnabled }),
+      });
+
+      if (res.ok) {
+        toast.success(`Bots ${!game.botsEnabled ? 'enabled' : 'disabled'} for ${game.gameName}`);
+        setPerGameConfigs(prev => prev.map(c => c.id === game.id ? { ...c, botsEnabled: !game.botsEnabled } : c));
+      } else {
+        toast.error("Failed to update game bot status");
+      }
+    } catch (error) {
+      toast.error("An error occurred during update");
+    } finally {
+      setUpdatingGameId(null);
     }
   };
 
@@ -240,10 +265,14 @@ export default function ManageBotsPage() {
                     <p className="text-xs text-muted-foreground">{cfg.gameId}</p>
                   </div>
                 </div>
-                <span className={`flex items-center gap-1 text-xs font-bold ${cfg.botsEnabled ? "text-green-400" : "text-red-400"}`}>
-                  {cfg.botsEnabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+                <button
+                  onClick={() => handleToggleGameBots(cfg)}
+                  disabled={updatingGameId === cfg.id}
+                  className={`flex items-center gap-1 text-xs font-bold transition-colors hover:opacity-80 ${cfg.botsEnabled ? "text-green-400" : "text-red-400"}`}
+                >
+                  {updatingGameId === cfg.id ? <Loader2 size={18} className="animate-spin" /> : (cfg.botsEnabled ? <ToggleRight size={18} /> : <ToggleLeft size={18} />)}
                   {cfg.botsEnabled ? "On" : "Off"}
-                </span>
+                </button>
               </div>
 
               <div className="space-y-2 text-sm">
@@ -276,16 +305,21 @@ export default function ManageBotsPage() {
         </div>
       </div>
 
-      <div className="flex justify-end gap-4 mt-8 pt-6 border-t border-white/[0.06]">
+      <div className="sticky bottom-6 flex justify-end gap-4 mt-8 pt-6 border-t border-white/[0.06] bg-[#0e0e10]/80 backdrop-blur-md p-4 rounded-xl shadow-2xl z-50">
+        <div className="mr-auto flex items-center gap-2 text-sm text-slate-400">
+          <Activity size={16} className="text-blue-400" />
+          <span>Last synced: {new Date().toLocaleTimeString()}</span>
+        </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="flex items-center gap-2 btn-neon px-6 py-3 rounded-lg font-bold transition-all disabled:opacity-50 shadow-lg"
+          className="flex items-center gap-2 btn-neon px-8 py-3 rounded-lg font-bold transition-all disabled:opacity-50 shadow-[0_0_20px_rgba(59,130,246,0.3)] hover:scale-105 active:scale-95"
         >
-          <Save size={20} />
-          {saving ? "Saving..." : "Save Configuration"}
+          {saving ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />}
+          {saving ? "Saving Changes..." : "Save All Settings"}
         </button>
       </div>
     </div>
   );
 }
+
