@@ -101,9 +101,17 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
             return;
           }
 
-          // SECURITY: Check if already in this room to avoid double charging
-          if (room && room.players.find(p => p.id === data.userId)) {
-            console.log(`[Socket] Player ${data.username} already in room ${room.roomCode}, skipping fee deduction.`);
+          // SECURITY: Check for any 'waiting' session in DB for this user & game to avoid double charging
+          const existingSession = await prisma.gameSession.findFirst({
+            where: {
+              status: "waiting",
+              gameConfig: { gameId: data.gameId },
+              players: { some: { playerId: data.userId } }
+            }
+          });
+
+          if (existingSession || (room && room.players.find(p => p.id === data.userId))) {
+            console.log(`[Socket] Player ${data.username} already has a waiting session, skipping fee deduction.`);
           } else {
             // Deduct Fee and Log Transaction
             await prisma.$transaction([
@@ -199,10 +207,10 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
           startCountdownSequence(room.roomCode);
         }
 
-        // Auto-start with bots after random timeout (7-15s total)
+        // Auto-start with bots after 5 seconds total
         if (!config.botsEnabled || updated.players.length < config.minPlayers) {
-          const randomWait = Math.floor(Math.random() * 8000) + 7000; // 7 to 15 seconds
-          console.log(`[Socket] Matchmaking timeout set to ${randomWait}ms for room ${room!.roomCode}`);
+          const waitTime = 5000; // 5 seconds as requested
+          console.log(`[Socket] Matchmaking timeout set to ${waitTime}ms for room ${room!.roomCode}`);
           
           setTimeout(async () => {
             const currentRoom = getRoom(room!.roomCode);
@@ -211,7 +219,7 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
               const isGlobalBotsEnabled = botConfig ? botConfig.botsEnabled : true;
 
               if (config.botsEnabled && isGlobalBotsEnabled) {
-                console.log(`[Socket] No real player found after ${randomWait}ms, adding bots to ${room!.roomCode}`);
+                console.log(`[Socket] No real player found after 5s, adding bots to ${room!.roomCode}`);
                 const needed = config.minPlayers - currentRoom.players.length;
                 for (let i = 0; i < Math.max(needed, 1); i++) {
                   joinRoom(room!.roomCode, {
@@ -224,7 +232,7 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
               }
               startCountdownSequence(room!.roomCode);
             }
-          }, randomWait);
+          }, waitTime);
         }
       } catch (err) {
         console.error("[Socket] Join error:", err);
