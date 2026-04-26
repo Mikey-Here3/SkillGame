@@ -312,8 +312,12 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
 
 // === COUNTDOWN & START SEQUENCE ===
 function startCountdownSequence(roomCode: string) {
+  console.log(`[Socket] Starting countdown for room ${roomCode}`);
   const room = startCountdown(roomCode);
-  if (!room || !io) return;
+  if (!room || !io) {
+    console.error(`[Socket] Failed to start countdown for room ${roomCode}: Room not found or IO not initialized`);
+    return;
+  }
 
   io.to(roomCode).emit("room_update", sanitizeRoom(room));
   io.to(roomCode).emit("countdown", { seconds: 3 });
@@ -325,6 +329,7 @@ function startCountdownSequence(roomCode: string) {
       io!.to(roomCode).emit("countdown", { seconds: count });
     } else {
       clearInterval(interval);
+      console.log(`[Socket] Countdown finished for room ${roomCode}, launching game...`);
       startGameSequence(roomCode);
     }
   }, 1000);
@@ -333,16 +338,27 @@ function startCountdownSequence(roomCode: string) {
 }
 
 async function startGameSequence(roomCode: string) {
+  console.log(`[Socket] startGameSequence called for ${roomCode}`);
   const room = startGame(roomCode);
-  if (!room || !io) return;
+  if (!room || !io) {
+    console.error(`[Socket] Failed to start game for room ${roomCode}: startGame returned null`);
+    return;
+  }
 
   const controller = getGameController(room.gameId);
-  if (!controller) return;
+  if (!controller) {
+    console.error(`[Socket] No controller found for game ${room.gameId}`);
+    return;
+  }
 
   // Fetch bot settings for dynamic handicapping
-  const botConfig = await prisma.botSettings.findUnique({ where: { id: "global" } });
-  if (botConfig) {
-    room.gameData.botConfig = botConfig;
+  try {
+    const botConfig = await prisma.botSettings.findUnique({ where: { id: "global" } });
+    if (botConfig) {
+      room.gameData.botConfig = botConfig;
+    }
+  } catch (e) {
+    console.warn("[Socket] Failed to fetch bot settings, using defaults.");
   }
 
   // === DB PERSISTENCE: Create GameSession ===
@@ -364,26 +380,28 @@ async function startGameSequence(roomCode: string) {
         },
       });
       room.sessionId = session.id;
-      console.log(`[Socket] GameSession created: ${session.id} for room ${roomCode}`);
+      console.log(`[Socket] GameSession persisted: ${session.id}`);
     }
   } catch (err) {
-    console.error("[Socket] Failed to create GameSession:", err);
+    console.error("[Socket] Failed to persist GameSession:", err);
   }
 
-  // Emit game_start to each player individually to provide player-specific state (like color or perspective)
+  // Emit game_start to each player
   room.players.forEach((p) => {
     if (!p.isBot) {
-      // Find the socket for this user
       const playerSocketId = Array.from(io!.sockets.adapter.rooms.get(roomCode) || []).find(sid => {
         const s = io!.sockets.sockets.get(sid);
         return (s as any)?.userId === p.id;
       });
 
       if (playerSocketId) {
+        console.log(`[Socket] Sending game_start to ${p.username} (${p.id})`);
         io!.to(playerSocketId).emit("game_start", {
           room: sanitizeRoom(room),
           gameState: controller.getGameState ? controller.getGameState(room, p.id) : room.gameData,
         });
+      } else {
+        console.warn(`[Socket] No active socket found for player ${p.username} in room ${roomCode}`);
       }
     }
   });
@@ -393,6 +411,7 @@ async function startGameSequence(roomCode: string) {
 
   // Game timer
   room.gameTimer = setTimeout(() => {
+    console.log(`[Socket] Game duration reached for room ${roomCode}, triggering endSequence`);
     endGameSequence(roomCode);
   }, room.gameDuration * 1000);
 }
