@@ -101,22 +101,28 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
             return;
           }
 
-          // Deduct Fee and Log Transaction
-          await prisma.$transaction([
-            prisma.user.update({
-              where: { id: data.userId },
-              data: { balance: { decrement: data.entryFee } },
-            }),
-            prisma.transaction.create({
-              data: {
-                userId: data.userId,
-                type: "game_fee",
-                amount: -data.entryFee,
-                status: "completed",
-                description: `Entry fee for ${data.gameId}`,
-              },
-            }),
-          ]);
+          // SECURITY: Check if already in this room to avoid double charging
+          if (room && room.players.find(p => p.id === data.userId)) {
+            console.log(`[Socket] Player ${data.username} already in room ${room.roomCode}, skipping fee deduction.`);
+          } else {
+            // Deduct Fee and Log Transaction
+            await prisma.$transaction([
+              prisma.user.update({
+                where: { id: data.userId },
+                data: { balance: { decrement: data.entryFee } },
+              }),
+              prisma.transaction.create({
+                data: {
+                  userId: data.userId,
+                  type: "game_fee",
+                  amount: -data.entryFee,
+                  status: "completed",
+                  description: `Entry fee for ${data.gameId}`,
+                },
+              }),
+            ]);
+            console.log(`[Socket] Deducted Rs. ${data.entryFee} from ${data.username} for ${data.gameId}`);
+          }
         }
 
         if (!room) {

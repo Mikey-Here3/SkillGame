@@ -20,7 +20,7 @@ export const chessBlitzController: GameController = {
       currentTurn: "white",
       gameOver: false,
       result: null as string | null,
-      lastMoveTime: Date.now(),
+      lastMoveTime: Date.now(), // This will be the start time
     };
   },
 
