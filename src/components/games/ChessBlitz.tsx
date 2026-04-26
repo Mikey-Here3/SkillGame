@@ -158,10 +158,11 @@ export function ChessBlitz({ gameState, sendAction }: ChessBlitzProps) {
       </div>
 
       <div className="w-full max-w-md aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-slate-700">
+        {/* @ts-ignore */}
         <Chessboard 
           position={fen} 
           onPieceDrop={onDrop}
-          boardOrientation={myColor === "black" ? "black" : "white"}
+          boardOrientation={(myColor === "black" ? "black" : "white") as any}
           customDarkSquareStyle={{ backgroundColor: "#475569" }}
           customLightSquareStyle={{ backgroundColor: "#cbd5e1" }}
         />
