@@ -105,7 +105,7 @@ export default function GameRoomPage() {
       socketInstance.emit("leave_room");
       socketInstance.disconnect();
     };
-  }, [user, gameId]);
+  }, [gameId, user?.id]);
 
   const sendAction = (action: any) => {
     if (socket && room && status === "playing") {

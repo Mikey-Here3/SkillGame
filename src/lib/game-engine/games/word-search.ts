@@ -53,19 +53,22 @@ export const wordSearchController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const data = bot.gameData as { found: string[] };
     const words = (room.gameData as { words: string[] }).words;
     const remaining = words.filter((w) => !data.found.includes(w));
     if (remaining.length === 0) return null;
 
-    const cfg = {
-      easy: { findChance: 0.3 },
-      medium: { findChance: 0.5 },
-      hard: { findChance: 0.75 },
-    }[difficulty];
+    let accuracy = 0.5;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.2, medium: 0.4, hard: 0.7 }[difficulty];
+    }
 
-    if (Math.random() < cfg.findChance) {
+    if (Math.random() < accuracy) {
       return { word: remaining[Math.floor(Math.random() * remaining.length)] };
     }
     return null;

@@ -59,19 +59,22 @@ export const memoryMatchController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const cards = (room.gameData as { cards: Array<{ id: number; emoji: string; matched: boolean }> }).cards;
     const unmatched = cards.filter((c) => !c.matched);
     if (unmatched.length < 2) return null;
 
-    const cfg = {
-      easy: { memoryChance: 0.2 },
-      medium: { memoryChance: 0.5 },
-      hard: { memoryChance: 0.8 },
-    }[difficulty];
+    let accuracy = 0.5;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.2, medium: 0.4, hard: 0.8 }[difficulty];
+    }
 
-    // Bot "remembers" cards based on difficulty
-    if (Math.random() < cfg.memoryChance) {
+    // Bot "remembers" cards based on accuracy
+    if (Math.random() < accuracy) {
       // Find a matching pair
       for (let i = 0; i < unmatched.length; i++) {
         for (let j = i + 1; j < unmatched.length; j++) {

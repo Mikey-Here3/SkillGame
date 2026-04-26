@@ -77,20 +77,24 @@ export const mathSpeedController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const data = bot.gameData as { currentProblem: number };
     const problems = (room.gameData as { problems: Array<{ answer: number }> }).problems;
     if (data.currentProblem >= problems.length) return null;
 
-    const cfg = {
-      easy: { accuracy: 0.6 },
-      medium: { accuracy: 0.8 },
-      hard: { accuracy: 0.95 },
-    }[difficulty];
+    // Use dynamic win rate from admin if available, otherwise fallback to defaults
+    let accuracy = 0.8;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.6, medium: 0.8, hard: 0.95 }[difficulty];
+    }
 
     const correct = problems[data.currentProblem].answer;
     return {
-      answer: Math.random() < cfg.accuracy ? correct : correct + Math.floor(Math.random() * 10) - 5,
+      answer: Math.random() < accuracy ? correct : correct + Math.floor(Math.random() * 10) - 5,
     };
   },
 

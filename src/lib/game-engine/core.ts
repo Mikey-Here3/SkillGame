@@ -49,7 +49,8 @@ export interface GameController {
   getBotAction(
     room: GameRoom,
     bot: GamePlayer,
-    difficulty: "easy" | "medium" | "hard"
+    difficulty: "easy" | "medium" | "hard",
+    botConfig?: any
   ): Record<string, unknown> | null;
   validateAction(
     room: GameRoom,

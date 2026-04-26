@@ -90,7 +90,7 @@ export const chessBlitzController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const gd = room.gameData as { fen: string; currentTurn: string; gameOver: boolean; result: string | null };
     const botData = bot.gameData as { color: string };
 
@@ -98,12 +98,28 @@ export const chessBlitzController: GameController = {
 
     try {
       const chess = new Chess(gd.fen);
-      const moves = chess.moves();
+      const moves = chess.moves({ verbose: true });
       if (moves.length === 0) return null;
 
-      // Pick a random move (in a real app, use Stockfish API or a simple evaluator)
-      const move = moves[Math.floor(Math.random() * moves.length)];
-      chess.move(move);
+      let accuracy = 0.5;
+      if (botConfig) {
+        if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+        else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+        else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+      }
+
+      // Simple heuristic: 
+      // Higher accuracy = prioritize captures and checks
+      const capturingMoves = moves.filter(m => m.captured || chess.isCheck());
+      
+      let chosenMove;
+      if (Math.random() < accuracy && capturingMoves.length > 0) {
+        chosenMove = capturingMoves[Math.floor(Math.random() * capturingMoves.length)];
+      } else {
+        chosenMove = moves[Math.floor(Math.random() * moves.length)];
+      }
+
+      chess.move(chosenMove.san);
 
       let endState = null;
       if (chess.isCheckmate()) endState = "checkmate";
@@ -111,7 +127,7 @@ export const chessBlitzController: GameController = {
       else if (chess.isStalemate()) endState = "stalemate";
 
       return {
-        move,
+        move: chosenMove.san,
         fen: chess.fen(),
         gameOver: chess.isGameOver(),
         result: endState

@@ -101,17 +101,17 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
             return;
           }
 
-          // SECURITY: Check for any 'waiting' session in DB for this user & game to avoid double charging
+          // SECURITY: Check for any 'waiting' or 'active' session in memory OR DB for this user to avoid double charging
+          const inMemoryRoom = getAllRooms().find(r => r.players.some(p => p.id === data.userId));
           const existingSession = await prisma.gameSession.findFirst({
             where: {
-              status: "waiting",
-              gameConfig: { gameId: data.gameId },
+              status: { in: ["waiting", "active"] },
               players: { some: { playerId: data.userId } }
             }
           });
 
-          if (existingSession || (room && room.players.find(p => p.id === data.userId))) {
-            console.log(`[Socket] Player ${data.username} already has a waiting session, skipping fee deduction.`);
+          if (existingSession || inMemoryRoom) {
+            console.log(`[Socket] Player ${data.username} already in a session (Memory: ${!!inMemoryRoom}, DB: ${!!existingSession}), skipping fee deduction.`);
           } else {
             // Deduct Fee and Log Transaction
             await prisma.$transaction([
@@ -430,26 +430,12 @@ function startBotLoop(room: GameRoom) {
     }
 
     for (const bot of bots) {
-      // Dynamic Handicapping Logic
       const botConfig = room.gameData.botConfig as any;
-      let actionChance = 100; // default 100% chance to act
-
-      if (botConfig) {
-        if (bot.botDifficulty === "easy") actionChance = botConfig.easyWinRate;
-        else if (bot.botDifficulty === "medium") actionChance = botConfig.mediumWinRate;
-        else if (bot.botDifficulty === "hard") actionChance = botConfig.hardWinRate;
-      }
-
-      // If random roll fails, the bot skips this turn (blunder/miss)
-      const roll = Math.random() * 100;
-      if (roll > actionChance) {
-        continue; // skip this bot's turn to enforce the strict win rate
-      }
-
       const action = controller.getBotAction(
         room,
         bot,
-        (bot.botDifficulty || "medium") as "easy" | "medium" | "hard"
+        (bot.botDifficulty || "medium") as "easy" | "medium" | "hard",
+        botConfig
       );
 
       if (action) {
@@ -626,8 +612,8 @@ async function endGameSequence(roomCode: string) {
           score: p.score,
           rank: p.rank,
           earnings: p.earnings,
-          gameData: p.gameData || {},
-        }));
+          gameData: (p.gameData as any) || {},
+        })) as any[];
 
         await prisma.gamePlayer.createMany({ data: playerRecords });
       }

@@ -75,23 +75,31 @@ export const reactionSpeedController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const data = room.gameData as { currentRound: number; rounds: number };
     if (data.currentRound >= data.rounds) return null;
 
-    const ranges = {
-      easy: { min: 400, max: 800, missChance: 0.2 },
-      medium: { min: 250, max: 500, missChance: 0.1 },
-      hard: { min: 150, max: 300, missChance: 0.05 },
-    };
-    const cfg = ranges[difficulty];
+    let accuracy = 0.5;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.3, medium: 0.6, hard: 0.9 }[difficulty];
+    }
 
-    if (Math.random() < cfg.missChance) {
+    // Scale reaction time based on accuracy (0.1 accuracy = slow, 0.9 accuracy = fast)
+    // Range: 150ms to 1000ms
+    const minTime = 150 + (1 - accuracy) * 300;
+    const maxTime = minTime + (1 - accuracy) * 500;
+    const missChance = Math.max(0, 0.25 * (1 - accuracy));
+
+    if (Math.random() < missChance) {
       return { type: "miss" };
     }
     return {
       type: "react",
-      reactionTime: Math.floor(Math.random() * (cfg.max - cfg.min) + cfg.min),
+      reactionTime: Math.floor(Math.random() * (maxTime - minTime) + minTime),
     };
   },
 

@@ -55,18 +55,21 @@ export const targetHitController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const gd = room.gameData as { targets: Array<{ id: number }>; currentTarget: number };
     const target = gd.targets[gd.currentTarget];
     if (!target) return null;
 
-    const cfg = {
-      easy: { hitChance: 0.5, reactionMs: 800 },
-      medium: { hitChance: 0.7, reactionMs: 500 },
-      hard: { hitChance: 0.9, reactionMs: 250 },
-    }[difficulty];
+    let accuracy = 0.5;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.4, medium: 0.65, hard: 0.9 }[difficulty];
+    }
 
-    if (Math.random() < cfg.hitChance) {
+    if (Math.random() < accuracy) {
       return { type: "hit", targetId: target.id, clickX: 0, clickY: 0 };
     }
     return { type: "miss", targetId: -1, clickX: 0, clickY: 0 };

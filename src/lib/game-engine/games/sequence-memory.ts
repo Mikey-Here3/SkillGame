@@ -49,20 +49,27 @@ export const sequenceMemoryController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const data = bot.gameData as { currentLevel: number; lives: number };
     if (data.lives <= 0) return null;
 
     const fullSequence = (room.gameData as { fullSequence: number[] }).fullSequence;
     const expected = fullSequence.slice(0, data.currentLevel);
 
-    const cfg = {
-      easy: { memoryLimit: 5, errorChance: 0.3 },
-      medium: { memoryLimit: 10, errorChance: 0.15 },
-      hard: { memoryLimit: 20, errorChance: 0.05 },
-    }[difficulty];
+    let accuracy = 0.5;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.2, medium: 0.5, hard: 0.85 }[difficulty];
+    }
 
-    if (data.currentLevel > cfg.memoryLimit || Math.random() < cfg.errorChance) {
+    // Dynamic memory limit and error chance based on accuracy
+    const memoryLimit = 3 + accuracy * 20;
+    const errorChance = Math.max(0.01, 1 - accuracy);
+
+    if (data.currentLevel > memoryLimit || Math.random() < errorChance) {
       const wrong = [...expected];
       wrong[Math.floor(Math.random() * wrong.length)] = Math.floor(Math.random() * 9);
       return { sequence: wrong };

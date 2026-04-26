@@ -75,7 +75,7 @@ export const crashTimingController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const data = bot.gameData as { cashedOut: boolean };
     if (data.cashedOut) return null;
 
@@ -86,20 +86,26 @@ export const crashTimingController: GameController = {
       currentMultiplier = 1.0 + Math.pow(elapsed / 2000, 1.5) * 0.1;
     }
 
-    // Bots have different risk tolerance by difficulty
-    const cfg = {
-      easy: { targetMultiplier: 1.3 + Math.random() * 0.5 },
-      medium: { targetMultiplier: 1.5 + Math.random() * 1.0 },
-      hard: { targetMultiplier: 2.0 + Math.random() * 1.5 },
-    }[difficulty];
+    let accuracy = 0.5;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.3, medium: 0.6, hard: 0.9 }[difficulty];
+    }
 
-    // Bot cashes out near their target, with some randomness
-    const safetyMargin = gd.crashPoint * 0.1;
+    // Accuracy affects "safety margin" and "target multiplier"
+    // High accuracy = cashes out very close to crashPoint
+    const safetyMargin = gd.crashPoint * (1.1 - accuracy) * 0.5;
+    const targetMultiplier = 1.2 + accuracy * (gd.crashPoint - 1.2);
+
     if (
-      currentMultiplier >= cfg.targetMultiplier ||
+      currentMultiplier >= targetMultiplier ||
       currentMultiplier >= gd.crashPoint - safetyMargin
     ) {
-      return { type: "cashout" };
+      // Small chance to fail even if at target (simulates human delay)
+      if (Math.random() < 0.9) return { type: "cashout" };
     }
     return null;
   },

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useAuthStore } from "@/stores/authStore";
 import {
   Users, Wallet, Gamepad2, TrendingUp, Shield, AlertTriangle,
-  DollarSign, Activity, BarChart3, Clock,
+  DollarSign, Activity, BarChart3, Clock, Trophy,
 } from "lucide-react";
 import Link from "next/link";
 

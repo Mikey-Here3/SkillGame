@@ -74,22 +74,34 @@ export const typingSpeedController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const data = bot.gameData as { typed: string };
     const text = (room.gameData as { text: string }).text;
     if (data.typed.length >= text.length) return null;
 
+    let accuracy = 0.8;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.5, medium: 0.8, hard: 0.98 }[difficulty];
+    }
+
+    // Invert accuracy for error rate (1.0 accuracy = 0% error)
+    const errorRate = Math.max(0, 0.2 * (1 - accuracy));
+
     const cfg = {
-      easy: { charsPerTick: 1, errorRate: 0.08 },
-      medium: { charsPerTick: 2, errorRate: 0.03 },
-      hard: { charsPerTick: 3, errorRate: 0.01 },
+      easy: { charsPerTick: 1 },
+      medium: { charsPerTick: 2 },
+      hard: { charsPerTick: 3 },
     }[difficulty];
 
     let newTyped = data.typed;
     for (let i = 0; i < cfg.charsPerTick; i++) {
       const idx = newTyped.length;
       if (idx >= text.length) break;
-      newTyped += Math.random() < cfg.errorRate ? "?" : text[idx];
+      newTyped += Math.random() < errorRate ? "z" : text[idx];
     }
 
     return { typed: newTyped, timestamp: Date.now() };

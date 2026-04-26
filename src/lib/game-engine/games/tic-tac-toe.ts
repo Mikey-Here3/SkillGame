@@ -69,7 +69,7 @@ export const ticTacToeController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const gd = room.gameData as { board: (string | null)[]; currentTurn: number; winner: string | null };
     if (gd.winner) return null;
 
@@ -82,31 +82,36 @@ export const ticTacToeController: GameController = {
 
     if (empty.length === 0) return null;
 
-    if (difficulty === "hard") {
-      // Try to win
+    let accuracy = 0.5;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.3, medium: 0.6, hard: 0.9 }[difficulty];
+    }
+
+    // Roll for intelligence
+    const isIntelligent = Math.random() < accuracy;
+
+    if (isIntelligent) {
+      // 1. Try to win
       for (const cell of empty) {
         const testBoard = [...gd.board];
         testBoard[cell] = botSymbol;
         if (checkWin(testBoard, botSymbol)) return { cell };
       }
-      // Block opponent
+      // 2. Block opponent
       for (const cell of empty) {
         const testBoard = [...gd.board];
         testBoard[cell] = oppSymbol;
         if (checkWin(testBoard, oppSymbol)) return { cell };
       }
-      // Take center
+      // 3. Take center
       if (empty.includes(4)) return { cell: 4 };
-    } else if (difficulty === "medium") {
-      // Block wins only
-      for (const cell of empty) {
-        const testBoard = [...gd.board];
-        testBoard[cell] = oppSymbol;
-        if (checkWin(testBoard, oppSymbol)) return { cell };
-      }
     }
 
-    // Random move
+    // Random move (either because roll failed or no tactical move found)
     return { cell: empty[Math.floor(Math.random() * empty.length)] };
   },
 

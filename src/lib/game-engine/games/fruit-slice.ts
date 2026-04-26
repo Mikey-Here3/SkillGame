@@ -59,22 +59,28 @@ export const fruitSliceController: GameController = {
       .map((p, i) => ({ ...p, rank: i + 1 }));
   },
 
-  getBotAction(room, bot, difficulty) {
+  getBotAction(room, bot, difficulty, botConfig) {
     const data = bot.gameData as { sliced: number };
     const fruits = (room.gameData as { fruits: Array<{ id: number; type: string }> }).fruits;
     const nextFruit = fruits[data.sliced] || null;
     if (!nextFruit) return null;
 
-    const cfg = {
-      easy: { hitChance: 0.6, bombAvoid: 0.5 },
-      medium: { hitChance: 0.8, bombAvoid: 0.75 },
-      hard: { hitChance: 0.95, bombAvoid: 0.9 },
-    }[difficulty];
+    let accuracy = 0.5;
+    if (botConfig) {
+      if (difficulty === "easy") accuracy = botConfig.easyWinRate / 100;
+      else if (difficulty === "medium") accuracy = botConfig.mediumWinRate / 100;
+      else if (difficulty === "hard") accuracy = botConfig.hardWinRate / 100;
+    } else {
+      accuracy = { easy: 0.4, medium: 0.7, hard: 0.95 }[difficulty];
+    }
 
-    if (nextFruit.type === "bomb" && Math.random() < cfg.bombAvoid) {
+    const hitChance = accuracy;
+    const bombAvoid = Math.min(0.99, accuracy + 0.1);
+
+    if (nextFruit.type === "bomb" && Math.random() < bombAvoid) {
       return null; // Bot avoids bomb
     }
-    if (Math.random() < cfg.hitChance) {
+    if (Math.random() < hitChance) {
       return { type: "slice", fruitId: nextFruit.id };
     }
     return { type: "miss" };
