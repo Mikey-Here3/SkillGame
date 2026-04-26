@@ -199,8 +199,11 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
           startCountdownSequence(room.roomCode);
         }
 
-        // Auto-start with bots after timeout (15s)
+        // Auto-start with bots after random timeout (7-15s total)
         if (!config.botsEnabled || updated.players.length < config.minPlayers) {
+          const randomWait = Math.floor(Math.random() * 8000) + 7000; // 7 to 15 seconds
+          console.log(`[Socket] Matchmaking timeout set to ${randomWait}ms for room ${room!.roomCode}`);
+          
           setTimeout(async () => {
             const currentRoom = getRoom(room!.roomCode);
             if (currentRoom && currentRoom.status === "waiting") {
@@ -208,9 +211,9 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
               const isGlobalBotsEnabled = botConfig ? botConfig.botsEnabled : true;
 
               if (config.botsEnabled && isGlobalBotsEnabled) {
+                console.log(`[Socket] No real player found after ${randomWait}ms, adding bots to ${room!.roomCode}`);
                 const needed = config.minPlayers - currentRoom.players.length;
                 for (let i = 0; i < Math.max(needed, 1); i++) {
-                  // Default to medium if time out
                   joinRoom(room!.roomCode, {
                     id: `bot_${Date.now()}_${i}`,
                     username: getRandomBotName(),
@@ -221,7 +224,7 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
               }
               startCountdownSequence(room!.roomCode);
             }
-          }, 15000);
+          }, randomWait);
         }
       } catch (err) {
         console.error("[Socket] Join error:", err);
