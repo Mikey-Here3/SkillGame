@@ -95,7 +95,7 @@ export default function AdminTransactionsPage() {
                       tx.type === "deposit" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
                     }`}>{tx.type}</span>
                   </td>
-                  <td className="p-4 font-bold font-heading">${tx.amount.toFixed(2)}</td>
+                  <td className="p-4 font-bold font-heading">Rs. {tx.amount.toFixed(2)}</td>
                   <td className="p-4 text-muted-foreground capitalize hidden md:table-cell">{tx.method || "N/A"}</td>
                   <td className="p-4 text-muted-foreground text-xs hidden md:table-cell">
                     {new Date(tx.createdAt).toLocaleDateString()}

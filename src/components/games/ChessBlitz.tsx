@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Chessboard } from "react-chessboard";
+const ChessboardAny = Chessboard as any;
 import { Chess } from "chess.js";
 
 interface ChessBlitzProps {
@@ -158,11 +159,10 @@ export function ChessBlitz({ gameState, sendAction }: ChessBlitzProps) {
       </div>
 
       <div className="w-full max-w-md aspect-square rounded-lg overflow-hidden shadow-2xl border-4 border-slate-700">
-        {/* @ts-ignore */}
-        <Chessboard 
+        <ChessboardAny 
           position={fen} 
           onPieceDrop={onDrop}
-          boardOrientation={(myColor === "black" ? "black" : "white") as any}
+          boardOrientation={(myColor === "black" ? "black" : "white")}
           customDarkSquareStyle={{ backgroundColor: "#475569" }}
           customLightSquareStyle={{ backgroundColor: "#cbd5e1" }}
         />

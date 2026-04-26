@@ -101,7 +101,7 @@ export default function AdminUsersPage() {
                     <div className="text-xs text-muted-foreground">{u.email}</div>
                   </td>
                   <td className="p-4">
-                    <span className="text-green-400 font-bold">${u.balance.toFixed(2)}</span>
+                    <span className="text-green-400 font-bold">Rs. {u.balance.toFixed(2)}</span>
                     <div className="text-xs text-muted-foreground">🪙 {u.coins}</div>
                   </td>
                   <td className="p-4 hidden md:table-cell">{u.gamesPlayed}</td>

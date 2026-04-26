@@ -164,7 +164,7 @@ export default function AdminGameConfigPage() {
                   <div className="flex flex-wrap gap-2 mb-2">
                     {(editData.entryFees || []).map((fee) => (
                       <span key={fee} className="flex items-center gap-1 px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 text-sm font-bold">
-                        ${fee}
+                        Rs. {fee}
                         <button onClick={() => removeFee(fee)} className="ml-1 text-red-400 hover:text-red-300">
                           <X size={12} />
                         </button>
@@ -234,24 +234,35 @@ export default function AdminGameConfigPage() {
                 </div>
 
                 {/* Player Limits & Duration */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs text-muted-foreground">Min Players</label>
-                    <input type="number" min="2" value={editData.minPlayers || cfg.minPlayers}
-                      onChange={(e) => setEditData({ ...editData, minPlayers: parseInt(e.target.value) })}
-                      className="h-9 w-full px-3 rounded-lg glass-input text-sm" />
-                  </div>
-                  <div>
-                    <label className="text-xs text-muted-foreground">Max Players</label>
-                    <input type="number" min="2" value={editData.maxPlayers || cfg.maxPlayers}
-                      onChange={(e) => setEditData({ ...editData, maxPlayers: parseInt(e.target.value) })}
-                      className="h-9 w-full px-3 rounded-lg glass-input text-sm" />
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-muted-foreground">Min Players</label>
+                      <input type="number" min="2" value={editData.minPlayers || cfg.minPlayers}
+                        onChange={(e) => setEditData({ ...editData, minPlayers: parseInt(e.target.value) })}
+                        className="h-9 w-full px-3 rounded-lg glass-input text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-muted-foreground">Max Players</label>
+                      <input type="number" min="2" value={editData.maxPlayers || cfg.maxPlayers}
+                        onChange={(e) => setEditData({ ...editData, maxPlayers: parseInt(e.target.value) })}
+                        className="h-9 w-full px-3 rounded-lg glass-input text-sm" />
+                    </div>
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground">Duration (s)</label>
                     <input type="number" min="10" value={editData.gameDuration || cfg.gameDuration}
                       onChange={(e) => setEditData({ ...editData, gameDuration: parseInt(e.target.value) })}
                       className="h-9 w-full px-3 rounded-lg glass-input text-sm" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer mt-1">
+                      <input type="checkbox" 
+                        checked={(editData as any).isTeamMode}
+                        onChange={(e) => setEditData({ ...editData, isTeamMode: e.target.checked } as any)}
+                        className="rounded" />
+                      Enable Team Mode (4v4 / 2v2)
+                    </label>
                   </div>
                 </div>
 
@@ -284,7 +295,7 @@ export default function AdminGameConfigPage() {
                   <div className="text-xs text-muted-foreground mb-1">Entry Fees</div>
                   <div className="flex flex-wrap gap-1">
                     {cfg.entryFees.map((f) => (
-                      <span key={f} className="px-2 py-0.5 rounded bg-white/5 text-xs">${f}</span>
+                      <span key={f} className="px-2 py-0.5 rounded bg-white/5 text-xs">Rs. {f}</span>
                     ))}
                   </div>
                 </div>

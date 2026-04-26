@@ -96,7 +96,7 @@ export default function AdminPage() {
         <div className="glass-card rounded-2xl p-5 bg-gradient-to-br from-emerald-500/10 to-green-500/10">
           <TrendingUp size={20} className="text-emerald-400 mb-3" />
           <div className="text-2xl font-bold font-heading text-emerald-400">
-            ${stats.totalRevenue.toFixed(2)}
+            Rs. {stats.totalRevenue.toFixed(2)}
           </div>
           <div className="text-xs text-muted-foreground mt-1">Total Platform Revenue</div>
         </div>
@@ -121,9 +121,9 @@ export default function AdminPage() {
         {[
           { href: "/admin/users", label: "User Management", desc: "View, ban, or restrict users", icon: Users, color: "text-blue-400" },
           { href: "/admin/transactions", label: "Transactions", desc: "Approve deposits & withdrawals", icon: Wallet, color: "text-green-400" },
+          { href: "/admin/tournaments", label: "Tournaments", desc: "Create high-stakes competitions", icon: Trophy, color: "text-amber-400" },
           { href: "/admin/game-config", label: "Game Configuration", desc: "Manage fees, commissions, rewards", icon: Gamepad2, color: "text-purple-400" },
           { href: "/admin/bots", label: "Bot Control", desc: "Manage bot settings per game", icon: Activity, color: "text-cyan-400" },
-          { href: "/admin/fraud", label: "Fraud Detection", desc: "Monitor suspicious activity", icon: AlertTriangle, color: "text-red-400" },
           { href: "/leaderboard", label: "Leaderboard", desc: "View player rankings", icon: TrendingUp, color: "text-amber-400" },
         ].map((item) => (
           <Link
@@ -160,10 +160,10 @@ export default function AdminPage() {
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-green-400">
-                    +${session.commission.toFixed(2)}
+                    +Rs. {session.commission.toFixed(2)}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Pool: ${session.prizePool.toFixed(0)}
+                    Pool: Rs. {session.prizePool.toFixed(0)}
                   </div>
                 </div>
               </div>
