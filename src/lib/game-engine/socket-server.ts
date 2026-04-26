@@ -242,6 +242,7 @@ export function initializeSocketServer(socketServer: SocketIOServer) {
         // CHECK FOR EARLY GAME END (e.g. Checkmate, Win state reached)
         const room = getRoom(data.roomCode);
         if (room && room.gameData && (room.gameData.gameOver === true || (result.broadcast as any).gameOver === true)) {
+          console.log(`[Socket] Early game end detected for room ${data.roomCode}`);
           if (room.gameTimer) clearTimeout(room.gameTimer);
           endGameSequence(data.roomCode);
         }
@@ -423,6 +424,13 @@ function startBotLoop(room: GameRoom) {
           const result = controller.handlePlayerAction(room, bot.id, action);
           if (result.broadcast && io) {
             io.to(room.roomCode).emit("game_update", result.broadcast);
+            
+            // CHECK FOR EARLY GAME END FROM BOT MOVE
+            if (room.gameData && (room.gameData.gameOver === true || (result.broadcast as any).gameOver === true)) {
+              console.log(`[Socket] Bot triggered early game end for room ${room.roomCode}`);
+              if (room.gameTimer) clearTimeout(room.gameTimer);
+              endGameSequence(room.roomCode);
+            }
           }
           if (io) {
             io.to(room.roomCode).emit("scores_update", {
