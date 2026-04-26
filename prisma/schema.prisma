@@ -1,0 +1,247 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+}
+
+// ============ USER ============
+model User {
+  id                      String    @id @default(cuid())
+  username                String    @unique
+  email                   String    @unique
+  password                String
+  balance                 Float     @default(0)
+  coins                   Int       @default(0)
+  gamesPlayed             Int       @default(0)
+  gamesWon                Int       @default(0)
+  winRate                 Float     @default(0)
+  role                    String    @default("user") // user | admin
+  referralCode            String    @unique
+  referredBy              String?
+  status                  String    @default("active") // active | banned | restricted
+  lastLoginIp             String?
+  deviceFingerprint       String?
+  notifDeposits           Boolean   @default(true)
+  notifWithdrawals        Boolean   @default(true)
+  notifRewards            Boolean   @default(true)
+  notifGames              Boolean   @default(true)
+  otpCode                 String?
+  otpExpires              DateTime?
+  emailVerified           Boolean   @default(false)
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  transactions            Transaction[]
+  notifications           Notification[]
+  userQuests              UserQuest[]
+  tournamentEntries       TournamentParticipant[]
+  gamePlayers             GamePlayer[]
+  reviewedTransactions    Transaction[]  @relation("ReviewedBy")
+
+  @@index([email])
+  @@index([referralCode])
+  @@index([status])
+}
+
+// ============ TRANSACTION ============
+model Transaction {
+  id            String    @id @default(cuid())
+  userId        String
+  type          String    // deposit | withdraw | game | reward | referral | coin_convert
+  amount        Float
+  status        String    @default("pending") // pending | approved | rejected | completed
+  method        String?   // easypaisa | jazzcash | paypal | crypto | bank
+  description   String    @default("")
+  metadata      Json      @default("{}")
+  reviewedById  String?
+  reviewedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  user          User      @relation(fields: [userId], references: [id])
+  reviewedBy    User?     @relation("ReviewedBy", fields: [reviewedById], references: [id])
+
+  @@index([userId, type, createdAt])
+  @@index([status, type])
+}
+
+// ============ GAME CONFIG (ADMIN CONTROLLED) ============
+model GameConfig {
+  id                  String    @id @default(cuid())
+  gameId              String    @unique // e.g. "reaction-speed", "fruit-slice"
+  gameName            String
+  gameDescription     String    @default("")
+  gameIcon            String    @default("gamepad")
+  entryFees           Json      @default("[10, 20, 50, 100, 500]") // array of numbers
+  commissionPercent   Float     @default(10) // 5-20%
+  rewardDistribution  Json      @default("{\"top1\": 50, \"top2\": 30, \"top3\": 20}")
+  maxPlayers          Int       @default(4)
+  minPlayers          Int       @default(2)
+  gameDuration        Int       @default(60) // seconds
+  isActive            Boolean   @default(true)
+  botsEnabled         Boolean   @default(true)
+  maxBots             Int       @default(100)
+  botDifficulty       Json      @default("{\"easy\": 40, \"medium\": 40, \"hard\": 20}") // % distribution
+  practiceEnabled     Boolean   @default(true)
+  antiCheatConfig     Json      @default("{}")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  sessions            GameSession[]
+
+  @@index([gameId])
+  @@index([isActive])
+}
+
+// ============ BOT SYSTEM SETTINGS (GLOBAL) ============
+model BotSettings {
+  id                  String    @id @default("global") // singleton pattern
+  botsEnabled         Boolean   @default(true)
+  easyWinRate         Float     @default(20) // target win rate for easy bots
+  mediumWinRate       Float     @default(50) // target win rate for medium bots
+  hardWinRate         Float     @default(80) // target win rate for expert bots
+  maxBotsPer1v1       Int       @default(1)
+  maxBotsPerTourney   Int       @default(100)
+  updatedAt           DateTime  @updatedAt
+}
+
+// ============ GAME SESSION ============
+model GameSession {
+  id              String    @id @default(cuid())
+  gameConfigId    String
+  roomCode        String    @unique
+  entryFee        Float     @default(0)
+  prizePool       Float     @default(0)
+  commission      Float     @default(0)
+  status          String    @default("waiting") // waiting | countdown | active | completed | cancelled
+  isPractice      Boolean   @default(false)
+  maxPlayers      Int       @default(4)
+  tournamentId    String?
+  gameData        Json      @default("{}") // game-specific state
+  startedAt       DateTime?
+  endedAt         DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  gameConfig      GameConfig  @relation(fields: [gameConfigId], references: [id])
+  tournament      Tournament? @relation(fields: [tournamentId], references: [id])
+  players         GamePlayer[]
+
+  @@index([status, gameConfigId])
+  @@index([roomCode])
+}
+
+// ============ GAME PLAYER (RESULT PER PLAYER PER SESSION) ============
+model GamePlayer {
+  id            String    @id @default(cuid())
+  sessionId     String
+  playerId      String?   // null for bots
+  isBot         Boolean   @default(false)
+  botDifficulty String?   // easy | medium | hard
+  username      String
+  score         Int       @default(0)
+  rank          Int       @default(0)
+  earnings      Float     @default(0)
+  gameData      Json      @default("{}") // per-player game-specific data
+  createdAt     DateTime  @default(now())
+
+  session       GameSession @relation(fields: [sessionId], references: [id])
+  player        User?       @relation(fields: [playerId], references: [id])
+
+  @@index([sessionId])
+  @@index([playerId])
+}
+
+// ============ TOURNAMENT ============
+model Tournament {
+  id                  String    @id @default(cuid())
+  title               String
+  description         String    @default("")
+  gameId              String    // references GameConfig.gameId
+  entryFee            Float     @default(0)
+  prizePool           Float     @default(0)
+  prizeDistribution   Json      @default("[]")
+  maxParticipants     Int       @default(16)
+  status              String    @default("upcoming") // upcoming | registration | active | completed | cancelled
+  botLimit            Int       @default(2)
+  brackets            Json      @default("[]")
+  startTime           DateTime
+  endTime             DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  participants        TournamentParticipant[]
+  sessions            GameSession[]
+
+  @@index([status])
+  @@index([gameId])
+}
+
+model TournamentParticipant {
+  id            String    @id @default(cuid())
+  tournamentId  String
+  userId        String
+  eliminated    Boolean   @default(false)
+  currentRound  Int       @default(1)
+  createdAt     DateTime  @default(now())
+
+  tournament    Tournament @relation(fields: [tournamentId], references: [id])
+  user          User       @relation(fields: [userId], references: [id])
+
+  @@unique([tournamentId, userId])
+}
+
+// ============ QUEST ============
+model Quest {
+  id          String    @id @default(cuid())
+  title       String
+  description String    @default("")
+  type        String    // daily | weekly | hard
+  action      String    // games_played | games_won | coins_earned | deposits | referrals
+  target      Int
+  rewardCoins Int       @default(0)
+  rewardCash  Float     @default(0)
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  userQuests  UserQuest[]
+
+  @@index([type, isActive])
+}
+
+model UserQuest {
+  id          String    @id @default(cuid())
+  userId      String
+  questId     String
+  progress    Int       @default(0)
+  completed   Boolean   @default(false)
+  claimed     Boolean   @default(false)
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  user        User      @relation(fields: [userId], references: [id])
+  quest       Quest     @relation(fields: [questId], references: [id])
+
+  @@unique([userId, questId])
+}
+
+// ============ NOTIFICATION ============
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  message   String
+  type      String    // deposit | withdrawal | reward | game | system | referral
+  read      Boolean   @default(false)
+  metadata  Json      @default("{}")
+  createdAt DateTime  @default(now())
+
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([userId, read, createdAt])
+}
